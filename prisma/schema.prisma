@@ -1,0 +1,222 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ALMOXARIFADO
+  GERENTE_REGIONAL
+  TECNICO
+}
+
+
+
+model Solicitacao {
+  id          String   @id @default(cuid())
+  produtoId   String
+  produto     Produto  @relation(fields: [produtoId], references: [id])
+  quantidade  Int
+  solicitanteId String // ID do User que pediu (Gerente Regional)
+  solicitante User     @relation("solicitacoesFeitas", fields: [solicitanteId], references: [id])
+
+  status      String   @default("PENDENTE") // PENDENTE, APROVADO, REJEITADO
+  observacao  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([produtoId])
+  @@index([solicitanteId])
+}
+
+model Movimentacao {
+  id              String      @id @default(cuid())
+  itemEstoqueId   String
+  itemEstoque     ItemEstoque @relation(fields: [itemEstoqueId], references: [id])
+
+  origemId        String
+  origem          Localizacao @relation("movimentacoesOrigem", fields: [origemId], references: [id])
+
+  destinoId       String
+  destino         Localizacao @relation("movimentacoesDestino", fields: [destinoId], references: [id])
+
+  responsavelId   String
+  responsavel     User        @relation(fields: [responsavelId], references: [id])
+
+  data            DateTime    @default(now())
+
+  @@index([itemEstoqueId])
+  @@index([origemId])
+  @@index([destinoId])
+  @@index([responsavelId])
+}
+
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Cola este código no seu arquivo `prisma/schema.prisma`
+
+
+
+// Modelos de Autenticação (já existentes)
+model User {
+  id                  String        @id @default(cuid())
+  name                String?
+  email               String?       @unique
+  emailVerified       DateTime?
+  password            String?
+  image               String?
+  role                Role          @default(ADMIN)
+  accounts            Account[]
+  sessions            Session[]
+  solicitacoesFeitas  Solicitacao[] @relation("solicitacoesFeitas")
+  movimentacoes       Movimentacao[]
+  
+}
+
+// ... outros modelos de Account, Session, VerificationToken
+
+// --- NOVOS MODELOS PARA GESTÃO DE ESTOQUE ---
+
+// Enumerações para padronizar valores
+enum TipoProduto {
+  SERIALIZADO // Itens com número de série único (ONU, Roteador)
+  QUANTIDADE  // Itens contados em volume (Conectores, Cabo por metro)
+}
+
+enum CondicaoItem {
+  NOVO
+  REUTILIZADO // Itens que retornaram de um cliente e foram recondicionados
+}
+
+enum StatusItem {
+  EM_ESTOQUE   // Disponível para uso
+  ALOCADO      // Com um técnico ou em um veículo
+  INSTALADO    // Em uso no cliente
+  DEFEITUOSO   // Aguardando descarte ou reparo
+  EM_REPARO    // Sendo consertado
+}
+
+// Tabela de Categorias
+model Categoria {
+  id        String    @id @default(cuid())
+  nome      String    @unique
+  produtos  Produto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Tabela de Localizações Físicas
+model Localizacao {
+  id                   String         @id @default(cuid())
+  nome                 String         @unique
+  descricao            String?
+  items                ItemEstoque[]
+  movimentacoesOrigem  Movimentacao[] @relation("movimentacoesOrigem")
+  movimentacoesDestino Movimentacao[] @relation("movimentacoesDestino")
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+}
+
+// Define o "catálogo" de produtos que a empresa trabalha
+model Produto {
+  id              String           @id @default(cuid())
+  nome            String
+  sku             String?          @unique
+  descricao       String?
+  tipo            TipoProduto
+  tempoEntrega    Int?
+
+  // --- NOVOS CAMPOS PARA CONTROLE MANUAL ---
+  pontoPedido1Mes      Int?  // Ponto de Pedido com base na média do último mês
+  estoqueSeguranca1Mes Int?  // Estoque de Segurança com base na média do último mês
+  pontoPedido12Meses   Int?  // Ponto de Pedido com base na média dos últimos 12 meses
+  estoqueSeguranca12Meses Int?  // Estoque de Segurança com base na média dos últimos 12 meses
+  
+  categoriaId     String
+  categoria       Categoria        @relation(fields: [categoriaId], references: [id])
+  
+  entradas        EntradaEstoque[]
+  items           ItemEstoque[]
+  solicitacoes    Solicitacao[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([categoriaId])
+}
+
+// Registra a entrada de produtos via Nota Fiscal
+model EntradaEstoque {
+  id              String      @id @default(cuid())
+  quantidade      Int         // Quantos itens deste produto chegaram
+  dataChegada     DateTime    @default(now())
+  numeroNotaFiscal String
+  fornecedor      String?
+
+  produtoId       String
+  produto         Produto     @relation(fields: [produtoId], references: [id])
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([produtoId])
+}
+
+// Representa CADA item físico individualmente
+model ItemEstoque {
+  id              String         @id @default(cuid())
+  serialNumber    String?        @unique
+  condicao        CondicaoItem
+  status          StatusItem     @default(EM_ESTOQUE)
+  produtoId       String
+  produto         Produto        @relation(fields: [produtoId], references: [id])
+  localizacaoId   String
+  localizacao     Localizacao    @relation(fields: [localizacaoId], references: [id])
+  movimentacoes   Movimentacao[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  @@index([produtoId])
+  @@index([localizacaoId])
+}
