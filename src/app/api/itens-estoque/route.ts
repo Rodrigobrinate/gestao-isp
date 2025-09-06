@@ -8,22 +8,25 @@ const prisma = new PrismaClient();
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status');
-  const localizacaoId = searchParams.get('localizacaoId');
+  const regiaoId = searchParams.get('regiaoId'); // Novo filtro
 
   const whereClause: any = {};
   if (status) whereClause.status = status;
-  if (localizacaoId) whereClause.localizacaoId = localizacaoId;
+
+  // Se uma regiaoId for fornecida, busca itens nela e em suas localidades filhas
+  if (regiaoId) {
+    const localidadesDaRegiao = await prisma.localizacao.findMany({
+      where: { parentId: regiaoId },
+    });
+    const idsLocalidades = [regiaoId, ...localidadesDaRegiao.map(l => l.id)];
+    whereClause.localizacaoId = { in: idsLocalidades };
+  }
 
   try {
     const itens = await prisma.itemEstoque.findMany({
       where: whereClause,
-      include: {
-        produto: true,
-        localizacao: true,
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      include: { produto: true, localizacao: true },
+      orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json(itens);
   } catch (error) {

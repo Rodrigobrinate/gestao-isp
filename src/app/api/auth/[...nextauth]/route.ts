@@ -6,6 +6,8 @@ import { PrismaClient } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 
+
+
 const prisma = new PrismaClient();
 
 // 2. ADICIONE A TIPAGEM AQUI -> : AuthOptions
@@ -51,20 +53,33 @@ export const authOptions: AuthOptions = {
   session: {
     strategy: "jwt", // Agora o TypeScript entende que "jwt" é um valor válido aqui
   },
-    callbacks: {
+      callbacks: {
         async jwt({ token, user }) {
-            // Ao fazer login, adiciona o 'role' do usuário ao token
             if (user) {
+                token.id = user.id;
                 // @ts-ignore
                 token.role = user.role;
+                // @ts-ignore
+                token.localizacaoId = user.localizacaoId;
             }
             return token;
         },
         async session({ session, token }) {
-            // Disponibiliza o 'role' do token para a sessão do cliente
+            // @ts-ignore
             if (session?.user) {
                 // @ts-ignore
+                session.user.id = token.id;
+                // @ts-ignore
                 session.user.role = token.role;
+                
+                // Busca a localização e anexa à sessão
+                if (token.localizacaoId) {
+                  const localizacao = await prisma.localizacao.findUnique({
+                    where: { id: token.localizacaoId as string }
+                  });
+                  // @ts-ignore
+                  session.user.localizacao = localizacao;
+                }
             }
             return session;
         },

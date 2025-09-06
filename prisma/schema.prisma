@@ -94,11 +94,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Cola este código no seu arquivo `prisma/schema.prisma`
-
-
-
-// Modelos de Autenticação (já existentes)
 model User {
   id                  String        @id @default(cuid())
   name                String?
@@ -111,14 +106,17 @@ model User {
   sessions            Session[]
   solicitacoesFeitas  Solicitacao[] @relation("solicitacoesFeitas")
   movimentacoes       Movimentacao[]
+    localizacaoId       String?
+  localizacao         Localizacao?  @relation(fields: [localizacaoId], references: [id])
+
+  // Relações existentes
+  accounts            Account[]
+  sessions            Session[]
+  solicitacoesFeitas  Solicitacao[] @relation("solicitacoesFeitas")
+  movimentacoes       Movimentacao[]
   
 }
 
-// ... outros modelos de Account, Session, VerificationToken
-
-// --- NOVOS MODELOS PARA GESTÃO DE ESTOQUE ---
-
-// Enumerações para padronizar valores
 enum TipoProduto {
   SERIALIZADO // Itens com número de série único (ONU, Roteador)
   QUANTIDADE  // Itens contados em volume (Conectores, Cabo por metro)
@@ -137,7 +135,7 @@ enum StatusItem {
   EM_REPARO    // Sendo consertado
 }
 
-// Tabela de Categorias
+
 model Categoria {
   id        String    @id @default(cuid())
   nome      String    @unique
@@ -147,7 +145,7 @@ model Categoria {
   updatedAt DateTime @updatedAt
 }
 
-// Tabela de Localizações Físicas
+
 model Localizacao {
   id                   String         @id @default(cuid())
   nome                 String         @unique
@@ -157,12 +155,20 @@ model Localizacao {
   movimentacoesDestino Movimentacao[] @relation("movimentacoesDestino")
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
+    User                 User[]
+  items                ItemEstoque[]
+  movimentacoesOrigem  Movimentacao[] @relation("movimentacoesOrigem")
+  movimentacoesDestino Movimentacao[] @relation("movimentacoesDestino")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// Define o "catálogo" de produtos que a empresa trabalha
+
 model Produto {
   id              String           @id @default(cuid())
-  nome            String
+  nome            String           @unique // <<-- ADICIONE @unique AQUI
+
   sku             String?          @unique
   descricao       String?
   tipo            TipoProduto
@@ -187,7 +193,6 @@ model Produto {
   @@index([categoriaId])
 }
 
-// Registra a entrada de produtos via Nota Fiscal
 model EntradaEstoque {
   id              String      @id @default(cuid())
   quantidade      Int         // Quantos itens deste produto chegaram
@@ -204,7 +209,6 @@ model EntradaEstoque {
   @@index([produtoId])
 }
 
-// Representa CADA item físico individualmente
 model ItemEstoque {
   id              String         @id @default(cuid())
   serialNumber    String?        @unique
