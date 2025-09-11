@@ -5,14 +5,21 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // PUT - Atualizar um produto
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: any }) {
   try {
-    const { id } = params;
+    //console.log(params.id)
+    const { id } = await params;
     const body = await req.json();
-
+const {
+      id: bodyId, // renomeia para não conflitar com o id dos params
+      createdAt,
+      updatedAt,
+      categoria, // remove o objeto aninhado
+      ...dadosParaAtualizar // agrupa o resto dos campos
+    } = body;
     // Converte os novos campos para números, caso venham como string do formulário
     const dataToUpdate = {
-      ...body,
+      ...dadosParaAtualizar ,
       tempoEntrega: body.tempoEntrega ? parseInt(body.tempoEntrega) : null,
       pontoPedido1Mes: body.pontoPedido1Mes ? parseInt(body.pontoPedido1Mes) : null,
       estoqueSeguranca1Mes: body.estoqueSeguranca1Mes ? parseInt(body.estoqueSeguranca1Mes) : null,
@@ -26,12 +33,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     });
     return NextResponse.json(produtoAtualizado);
   } catch (error) {
+    console.error('Erro ao atualizar produto:', error);
     return NextResponse.json({ message: 'Erro ao atualizar produto' }, { status: 500 });
   }
 }
 
 // DELETE - Apagar um produto
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: any }) {
   try {
     const { id } = params;
     await prisma.produto.delete({ where: { id } });

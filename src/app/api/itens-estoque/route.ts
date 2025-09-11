@@ -4,32 +4,41 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// GET: Lista itens de estoque, podendo filtrar por status, localização, etc.
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status');
-  const regiaoId = searchParams.get('regiaoId'); // Novo filtro
+  const regiaoId = searchParams.get('regiaoId');
 
-  const whereClause: any = {};
-  if (status) whereClause.status = status;
-
-  // Se uma regiaoId for fornecida, busca itens nela e em suas localidades filhas
-  if (regiaoId) {
-    const localidadesDaRegiao = await prisma.localizacao.findMany({
-      where: { parentId: regiaoId },
-    });
-    const idsLocalidades = [regiaoId, ...localidadesDaRegiao.map(l => l.id)];
-    whereClause.localizacaoId = { in: idsLocalidades };
+  if (!regiaoId) {
+    return NextResponse.json({ message: "O ID da região é obrigatório." }, { status: 400 });
   }
 
   try {
+    // 1. Encontra o ID de todas as localidades que são filhas da região
+    const localidadesFilhas = await prisma.localizacao.findMany({
+      where: { parentId: regiaoId },
+      select: { id: true }
+    });
+    
+    // 2. Cria uma lista de IDs que inclui a própria região + as filhas
+    const todosIdsDaRegiao = [regiaoId, ...localidadesFilhas.map(l => l.id)];
+
+    // 3. Busca todos os itens que pertencem a qualquer uma dessas localidades
     const itens = await prisma.itemEstoque.findMany({
-      where: whereClause,
-      include: { produto: true, localizacao: true },
-      orderBy: { createdAt: 'desc' },
+      where: {
+        AND: [{ status: 'EM_ESTOQUE' },
+        {localizacaoId: { in: todosIdsDaRegiao }}]
+      },
+      include: {
+        produto: true,
+        localizacao: true,
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
     return NextResponse.json(itens);
   } catch (error) {
+    console.error("ERRO AO BUSCAR ITENS DE ESTOQUE:", error);
     return NextResponse.json({ message: "Erro ao buscar itens de estoque" }, { status: 500 });
   }
 }

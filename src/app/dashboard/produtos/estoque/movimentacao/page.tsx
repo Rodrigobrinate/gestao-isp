@@ -13,7 +13,7 @@ import { GerenteRegionalView } from '@/src/app/components/movimentacao/GerenteRe
 
 // --- Placeholders dos outros componentes ---
 //const GerenteRegionalView = () => <div className="p-6 bg-green-50 rounded-lg">Visão do Gerente: Solicitar Material, Enviar para Técnico</div>;
-const TecnicoView = () => <div className="p-6 bg-yellow-50 rounded-lg">Visão do Técnico: Ver meu estoque</div>;
+import { TecnicoView } from '@/src/app/components/movimentacao/TecnicoView'; // <<-- Importar
 const AcessoNegadoView = () => <div className="p-6 bg-red-50 rounded-lg">Você não tem permissão para acessar esta página.</div>;
 
 export default function MovimentacaoPage() {

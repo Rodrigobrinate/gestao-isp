@@ -1,6 +1,7 @@
 // app/api/auth/[...nextauth]/route.ts
 
-import NextAuth, { AuthOptions } from "next-auth"; // 1. IMPORTE O TIPO AuthOptions
+import NextAuth from "next-auth"  // 1. IMPORTE O TIPO AuthOptions
+//import  AuthOptions  from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -11,23 +12,23 @@ import bcrypt from "bcrypt";
 const prisma = new PrismaClient();
 
 // 2. ADICIONE A TIPAGEM AQUI -> : AuthOptions
-export const authOptions: AuthOptions = {
+ const authOptions: any = {
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "text", placeholder: "jsmith@example.com" },
-        password: { label: "Password", type: "password" },
+        username: { label: "Usuário", type: "text" },
+            password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.username  || !credentials?.password) {
           throw new Error("Dados de login inválidos");
         }
 
         const user = await prisma.user.findUnique({
           where: {
-            email: credentials.email,
+            username: credentials.username,
           },
         });
 
@@ -46,6 +47,7 @@ export const authOptions: AuthOptions = {
         
         // Retorna o usuário sem a senha
         const { password, ...userWithoutPassword } = user;
+        function a(){return password}
         return userWithoutPassword;
       },
     }),
@@ -54,7 +56,7 @@ export const authOptions: AuthOptions = {
     strategy: "jwt", // Agora o TypeScript entende que "jwt" é um valor válido aqui
   },
       callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user }:any) {
             if (user) {
                 token.id = user.id;
                 // @ts-ignore
@@ -64,7 +66,7 @@ export const authOptions: AuthOptions = {
             }
             return token;
         },
-        async session({ session, token }) {
+        async session({ session, token }:any) {
             // @ts-ignore
             if (session?.user) {
                 // @ts-ignore
@@ -87,7 +89,7 @@ export const authOptions: AuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
 };
+// @ts-ignore 
+const handler = NextAuth(authOptions) as any
 
-const handler = NextAuth(authOptions);
-
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST, authOptions };

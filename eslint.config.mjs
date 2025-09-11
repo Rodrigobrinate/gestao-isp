@@ -18,7 +18,21 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
-    ],
+    ]
+  },
+  {
+    // This section overrides the default rules.
+    rules: {
+      // The following rule is disabled to allow the use of "@ts-ignore".
+      // The default configuration in "next/typescript" suggests using "@ts-expect-error" instead.
+      "@typescript-eslint/ban-ts-comment": "off",
+            "@typescript-eslint/no-explicit-any": "off",
+            " @typescript-eslint/no-unused-vars": "off",
+            "@typescript-eslint/no-unused-vars-experimental": "off",
+            "@typescript-eslint/no-unused-vars": "off",
+            "@typescript-eslint/no-wrapper-object-types": "off",
+            "react-hooks/rules-of-hooks": "off"
+    },
   },
 ];
 

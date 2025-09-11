@@ -14,6 +14,7 @@ type MovimentacaoCompleta = Prisma.MovimentacaoGetPayload<{ include: { itemEstoq
 // --- SUB-COMPONENTES (Definidos FORA do componente principal) ---
 
 function TransferenciaForm({ produtosDisponiveis, localidades, currentUser, localidadeAlmoxarifado, onTransferir, isLoading }: {
+
   produtosDisponiveis: Produto[],
   localidades: Localizacao[],
   currentUser: User,
@@ -21,6 +22,8 @@ function TransferenciaForm({ produtosDisponiveis, localidades, currentUser, loca
   onTransferir: (data: any) => Promise<boolean>,
   isLoading: boolean
 }) {
+    //const { data: session, status: sessionStatus } = useSession();
+
   const [produtoId, setProdutoId] = useState('');
   const [quantidade, setQuantidade] = useState('');
   const [serial, setSerial] = useState('');
@@ -110,7 +113,7 @@ function TransferenciaForm({ produtosDisponiveis, localidades, currentUser, loca
   );
 }
 
-function SolicitacoesTable({ solicitacoes, onUpdate }: { solicitacoes: SolicitacaoCompleta[], onUpdate: (id: string, status: 'APROVADO' | 'REJEITADO') => void }) {
+function SolicitacoesTable({ solicitacoes, onUpdate }: { solicitacoes: SolicitacaoCompleta[], onUpdate: (id: string, status: 'APROVADO' | 'REJEITADO', solicitanteId: string) => void }) {
   const solicitacoesPendentes = solicitacoes.filter(s => s.status === 'PENDENTE');
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
@@ -127,8 +130,8 @@ function SolicitacoesTable({ solicitacoes, onUpdate }: { solicitacoes: Solicitac
                   <td className="p-2">{sol.produto.nome}</td>
                   <td className="p-2 font-bold">{sol.quantidade}</td>
                   <td className="p-2 flex gap-2">
-                    <button onClick={() => onUpdate(sol.id, 'APROVADO')} title="Aprovar" className="p-2 bg-green-100 text-green-700 rounded-full hover:bg-green-200"><Check size={16} /></button>
-                    <button onClick={() => onUpdate(sol.id, 'REJEITADO')} title="Rejeitar" className="p-2 bg-red-100 text-red-700 rounded-full hover:bg-red-200"><X size={16} /></button>
+                    <button onClick={() => onUpdate(sol.id, 'APROVADO', sol.solicitante.id)} title="Aprovar" className="p-2 bg-green-100 text-green-700 rounded-full hover:bg-green-200"><Check size={16} /></button>
+                    <button onClick={() => onUpdate(sol.id, 'REJEITADO', sol.solicitante.id)} title="Rejeitar" className="p-2 bg-red-100 text-red-700 rounded-full hover:bg-red-200"><X size={16} /></button>
                   </td>
                 </tr>
               ))}
@@ -178,11 +181,13 @@ export function AlmoxarifadoView() {
   const [feedback, setFeedback] = useState<{ type: 'error' | 'success', message: string } | null>(null);
 
   const fetchData = async () => {
+        const regiaoId = session?.user?.localizacao?.id;
+
     try {
       setLoading(true);
       setFeedback(null); 
       const [resItens, resSol, resMov, resLoc] = await Promise.all([
-        fetch('/api/itens-estoque?status=EM_ESTOQUE'),
+        fetch(`/api/itens-estoque?regiaoId=${regiaoId}?status=EM_ESTOQUE`),
         fetch('/api/solicitacoes'),
         fetch('/api/movimentacoes'),
         fetch('/api/localidades'),
@@ -241,12 +246,12 @@ export function AlmoxarifadoView() {
     }
   };
 
-  const handleUpdateSolicitacao = async (id: string, status: 'APROVADO' | 'REJEITADO') => {
+  const handleUpdateSolicitacao = async (id: string, status: 'APROVADO' | 'REJEITADO', solicitanteId: string) => {
     setLoading(true);
     await fetch(`/api/solicitacoes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, responsavelId: solicitanteId }),
     });
     setFeedback({ type: 'success', message: `Solicitação atualizada com sucesso.` });
     await fetchData();
