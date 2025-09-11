@@ -50,7 +50,7 @@ COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/clie
 # Copia os arquivos da aplicação compilada do estágio anterior
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-
+COPY /prisma ./prisma
 # Define o usuário que irá rodar o processo
 USER nextjs
 
