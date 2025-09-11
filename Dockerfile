@@ -17,6 +17,11 @@ ENV NODE_ENV=production
 
 # 4. Roda os comandos de build, incluindo o Prisma Generate
 #    (Lembre-se de ter corrigido o schema.prisma com os binaryTargets)
+# Declare the build argument
+ARG DATABASE_URL
+
+# Make the argument available as an environment variable for subsequent commands
+ENV DATABASE_URL=$DATABASE_URL
 RUN npx prisma db push
 RUN npm run build
 
