@@ -44,6 +44,7 @@ COPY --from=builder /app/package*.json ./
 
 # Instala SOMENTE as dependências de produção
 RUN npm ci --omit=dev
+COPY --from=builder /app/node_modules/.prisma/client ./node_modules/.prisma/client
 
 # Copia os arquivos da aplicação compilada do estágio anterior
 COPY --from=builder /app/.next ./.next
