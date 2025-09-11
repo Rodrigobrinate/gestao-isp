@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 
 # 4. Roda os comandos de build, incluindo o Prisma Generate
 #    (Lembre-se de ter corrigido o schema.prisma com os binaryTargets)
-RUN npx prisma generate
+RUN npx prisma db push
 RUN npm run build
 
 
