@@ -23,6 +23,7 @@ ARG DATABASE_URL
 # Make the argument available as an environment variable for subsequent commands
 ENV DATABASE_URL=$DATABASE_URL
 RUN npx prisma db push
+RUN npx prisma generate
 RUN npm run build
 
 
