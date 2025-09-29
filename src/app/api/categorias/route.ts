@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(novaCategoria, { status: 201 });
   } catch (error) {
+    console.log(error);
     return NextResponse.json({ message: 'Erro ao criar categoria' }, { status: 500 });
   }
 }

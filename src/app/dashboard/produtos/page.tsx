@@ -4,6 +4,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Edit, Trash2, PlusCircle } from 'lucide-react';
 import { TipoProduto } from '@prisma/client';
+import { useSession } from 'next-auth/react';
 
 // --- Interfaces de Tipos ---
 interface Categoria {
@@ -39,6 +40,11 @@ export default function ProdutosPage() {
   const [isEditando, setIsEditando] = useState(false);
   const [nomeNovaCategoria, setNomeNovaCategoria] = useState('');
   const [novaLocalidade, setNovaLocalidade] = useState<Partial<Localidade>>({});
+  const { data: session, status } = useSession();
+
+  if (status === "authenticated") {
+    console.log(session.user)
+  }
 
   const fetchData = async () => {
     const [resProdutos, resCategorias, resLocalidades] = await Promise.all([

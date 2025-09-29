@@ -1,7 +1,9 @@
-generator client {
-  provider = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -9,17 +11,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ========= NOVOS MODELS PARA ADMINISTRAÇÃO =========
+
+model Holding {
+  id        String    @id @default(cuid())
+  nome      String    @unique
+  empresas  Empresa[]
+  categorias      Categoria[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Empresa {
+  id        String    @id @default(cuid())
+  nome      String
+  cnpj      String    @unique
+  holdingId String
+  holding   Holding   @relation(fields: [holdingId], references: [id])
+
+  // Relações com os outros models
+  usuarios        User[]
+  localizacoes    Localizacao[]
+ 
+  produtos        Produto[]
+  entradasEstoque EntradaEstoque[]
+  itensEstoque    ItemEstoque[]
+
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([holdingId])
+}
+
+
+// ========= MODELS EXISTENTES ATUALIZADOS =========
+
 model Solicitacao {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   produtoId     String
   quantidade    Int
   solicitanteId String
-  status        String   @default("PENDENTE")
+  status        String    @default("PENDENTE")
   observacao    String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  produto       Produto  @relation(fields: [produtoId], references: [id])
-  solicitante   User     @relation("solicitacoesFeitas", fields: [solicitanteId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  produto       Produto   @relation(fields: [produtoId], references: [id])
+  solicitante   User      @relation("solicitacoesFeitas", fields: [solicitanteId], references: [id])
 
   @@index([produtoId])
   @@index([solicitanteId])
@@ -80,66 +118,93 @@ model VerificationToken {
 model User {
   id                 String         @id @default(cuid())
   name               String?
-  username           String @unique
+  username           String         @unique
   email              String?
   emailVerified      DateTime?
   password           String?
   image              String?
-  localizacaoId       String?
-  localizacao         Localizacao?  @relation(fields: [localizacaoId], references: [id])
- 
+  localizacaoId      String?
+  empresaId          String // Vínculo com a Empresa
+  empresa            Empresa        @relation(fields: [empresaId], references: [id])
+  localizacao        Localizacao?   @relation(fields: [localizacaoId], references: [id])
   role               Role           @default(ADMIN)
   accounts           Account[]
   movimentacoes      Movimentacao[]
   sessions           Session[]
   solicitacoesFeitas Solicitacao[]  @relation("solicitacoesFeitas")
+
+  @@index([empresaId])
 }
 
 model Categoria {
   id        String    @id @default(cuid())
-  nome      String    @unique
+  nome      String
+  holdingId String // Vínculo com a Empresa
+  holding   Holding   @relation(fields: [holdingId], references: [id])
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   produtos  Produto[]
+
+  @@unique([nome, holdingId]) // Categoria deve ser única por empresa
+  @@index([holdingId])
 }
 
 model Localizacao {
-  id                   String         @id @default(cuid())
-  nome                 String         @unique
+  id                   String          @id @default(cuid())
+  nome                 String
   descricao            String?
-    tipo      TipoLocalizacao   @default(ALMOXARIFADO)
-
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-      User                 User[]
-
+  tipo                 TipoLocalizacao @default(ALMOXARIFADO)
+  // Campos de Endereço
+  endereco             String?
+  cidade               String?
+  estado               String?
+  cep                  String?
+  latitude             Float?
+  longitude            Float?
+  // Vínculo com a Empresa
+  empresaId            String
+  empresa              Empresa         @relation(fields: [empresaId], references: [id])
+  // Hierarquia de Localidades
+  parentId             String?
+  parent               Localizacao?    @relation("HierarquiaLocalizacao", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children             Localizacao[]   @relation("HierarquiaLocalizacao")
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  User                 User[]
   items                ItemEstoque[]
-  movimentacoesDestino Movimentacao[] @relation("movimentacoesDestino")
-  movimentacoesOrigem  Movimentacao[] @relation("movimentacoesOrigem")
-    parentId             String?
+  movimentacoesDestino Movimentacao[]  @relation("movimentacoesDestino")
+  movimentacoesOrigem  Movimentacao[]  @relation("movimentacoesOrigem")
+
+  @@unique([nome, empresaId]) // Localização deve ser única por empresa
   @@index([parentId])
+  @@index([empresaId])
 }
 
 model Produto {
-  id                      String           @id @default(cuid())
-  nome                    String
-  sku                     String?          @unique
-  descricao               String?
-  tipo                    TipoProduto
-  tempoEntrega            Int?
-  categoriaId             String
-  createdAt               DateTime         @default(now())
-  updatedAt               DateTime         @updatedAt
-  estoqueSeguranca12Meses Int?
-  estoqueSeguranca1Mes    Int?
-  pontoPedido12Meses      Int?
-  pontoPedido1Mes         Int?
-  entradas                EntradaEstoque[]
-  items                   ItemEstoque[]
-  categoria               Categoria        @relation(fields: [categoriaId], references: [id])
-  solicitacoes            Solicitacao[]
+  id                        String         @id @default(cuid())
+  nome                      String
+  sku                       String?
+  descricao                 String?
+  tipo                      TipoProduto
+  tempoEntrega              Int?
+  categoriaId               String
+  empresaId                 String // Vínculo com a Empresa
+  empresa                   Empresa        @relation(fields: [empresaId], references: [id])
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+  estoqueSeguranca12Meses   Int?
+  estoqueSeguranca1Mes      Int?
+  pontoPedido12Meses        Int?
+  pontoPedido1Mes           Int?
+  entradas                  EntradaEstoque[]
+  items                     ItemEstoque[]
+  categoria                 Categoria      @relation(fields: [categoriaId], references: [id])
+  solicitacoes              Solicitacao[]
 
+  @@unique([nome, empresaId]) // Produto deve ser único por empresa
   @@index([categoriaId])
+  @@index([empresaId])
 }
 
 model EntradaEstoque {
@@ -149,32 +214,41 @@ model EntradaEstoque {
   numeroNotaFiscal String
   fornecedor       String?
   produtoId        String
+  empresaId        String // Vínculo com a Empresa
+  empresa          Empresa  @relation(fields: [empresaId], references: [id])
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   produto          Produto  @relation(fields: [produtoId], references: [id])
 
   @@index([produtoId])
+  @@index([empresaId])
 }
 
 model ItemEstoque {
-  id            String         @id @default(cuid())
-  serialNumber  String?        @unique
+  id            String       @id @default(cuid())
+  serialNumber  String?      @unique
   condicao      CondicaoItem
-  status        StatusItem     @default(EM_ESTOQUE)
+  status        StatusItem   @default(EM_ESTOQUE)
   produtoId     String
   localizacaoId String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  localizacao   Localizacao    @relation(fields: [localizacaoId], references: [id])
-  produto       Produto        @relation(fields: [produtoId], references: [id])
+  empresaId     String // Vínculo com a Empresa
+  empresa       Empresa      @relation(fields: [empresaId], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  localizacao   Localizacao  @relation(fields: [localizacaoId], references: [id])
+  produto       Produto      @relation(fields: [produtoId], references: [id])
   movimentacoes Movimentacao[]
 
   @@index([produtoId])
   @@index([localizacaoId])
+  @@index([empresaId])
 }
 
+// ========= ENUMS ATUALIZADOS =========
+
 enum Role {
-  ADMIN
+  SUPER_ADMIN      // Administrador do Sistema Global
+  ADMIN            // Administrador de uma Empresa (CNPJ)
   ALMOXARIFADO
   GERENTE_REGIONAL
   TECNICO
@@ -202,4 +276,5 @@ enum TipoLocalizacao {
   REGIAO
   ALMOXARIFADO
   TECNICO
+  POP // Ponto de Presença
 }

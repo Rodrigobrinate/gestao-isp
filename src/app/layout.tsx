@@ -22,8 +22,8 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={inter.className}>
         <AuthProvider>
-          <Header /> {/* 2. Adicione o Header aqui */}
-          <main className="container mx-auto px-6 py-8">
+       {   <Header />  /*2. Adicione o Header aqui */}
+          <main className="container mx-auto ">
             {children} {/* O conteúdo da página será renderizado aqui */}
           </main>
         </AuthProvider>
