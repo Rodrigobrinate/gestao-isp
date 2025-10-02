@@ -1,6 +1,8 @@
 // app/api/produtos/route.ts
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
@@ -19,6 +21,7 @@ export async function GET() {
 
 // POST - Criar um novo produto (CÓDIGO CORRIGIDO)
 export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
   try {
     const body = await req.json();
 
@@ -31,6 +34,7 @@ export async function POST(req: Request) {
       estoqueSeguranca1Mes: body.estoqueSeguranca1Mes ? parseInt(body.estoqueSeguranca1Mes) : null,
       pontoPedido12Meses: body.pontoPedido12Meses ? parseInt(body.pontoPedido12Meses) : null,
       estoqueSeguranca12Meses: body.estoqueSeguranca12Meses ? parseInt(body.estoqueSeguranca12Meses) : null,
+      empresaId: session.user.empresaId
     };
 
     const novoProduto = await prisma.produto.create({

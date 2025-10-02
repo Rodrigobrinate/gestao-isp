@@ -42,9 +42,7 @@ export default function ProdutosPage() {
   const [novaLocalidade, setNovaLocalidade] = useState<Partial<Localidade>>({});
   const { data: session, status } = useSession();
 
-  if (status === "authenticated") {
-    console.log(session.user)
-  }
+  
 
   const fetchData = async () => {
     const [resProdutos, resCategorias, resLocalidades] = await Promise.all([
@@ -61,14 +59,19 @@ export default function ProdutosPage() {
 
   // --- Funções de Categoria ---
   const handleAddCategoria = async (e: FormEvent) => {
+
+    if (status === "authenticated") {
+    console.log(session.user)
+ 
     e.preventDefault();
     await fetch('/api/categorias', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome: nomeNovaCategoria }),
+      body: JSON.stringify({ nome: nomeNovaCategoria, holdingId : session.user.empresa.holdingId }),
     });
     setNomeNovaCategoria('');
-    fetchData();
+    fetchData(); 
+  }
   };
 
   const handleDeleteCategoria = async (id: string) => {
@@ -84,7 +87,7 @@ export default function ProdutosPage() {
     await fetch('/api/localidades', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(novaLocalidade),
+      body: JSON.stringify({nome: novaLocalidade.nome, tipo: 'REGIAO' }),
     });
     setNovaLocalidade({});
     fetchData();
@@ -220,6 +223,8 @@ export default function ProdutosPage() {
                 <th className="p-2">Categoria</th>
                 <th className="p-2">Ponto de Pedido (1M)</th>
                 <th className="p-2">Estoque Seg. (1M)</th>
+                <th className="p-2">Ponto de Pedido (12M)</th>
+                <th className="p-2">Estoque Seg. (12M)</th>
                 <th className="p-2">Ações</th>
               </tr>
             </thead>
@@ -230,6 +235,8 @@ export default function ProdutosPage() {
                   <td className="p-2">{prod.tipo}</td>
                   <td className="p-2">{prod.categoria.nome}</td>
                   <td className="p-2">{prod.pontoPedido1Mes ?? 'N/A'}</td>
+                  <td className="p-2">{prod.estoqueSeguranca1Mes ?? 'N/A'}</td>
+                   <td className="p-2">{prod.pontoPedido12Meses ?? 'N/A'}</td>
                   <td className="p-2">{prod.estoqueSeguranca1Mes ?? 'N/A'}</td>
                   <td className="p-2 flex gap-2">
                     <button onClick={() => abrirModalParaEditarProduto(prod)} className="text-blue-500 hover:text-blue-700"><Edit size={18} /></button>
@@ -279,6 +286,8 @@ export default function ProdutosPage() {
                     <label className="text-sm font-medium">Estoque de Segurança (Ano)</label>
                     <input type="number" placeholder="0" value={produtoAtual.estoqueSeguranca12Meses || ''} onChange={(e) => setProdutoAtual({ ...produtoAtual, estoqueSeguranca12Meses: parseInt(e.target.value) })} className="w-full p-2 border rounded mt-1" />
                   </div>
+
+                  
                 </div>
               </div>
               <div className="flex justify-end gap-4 mt-8">

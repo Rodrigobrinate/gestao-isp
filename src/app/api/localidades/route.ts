@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       // Admins/Almoxarifado SÓ PODEM criar REGIÕES
       if (tipo !== 'REGIAO') return NextResponse.json({ message: 'Permissão para criar apenas REGIOES.' }, { status: 403 });
       const novaLocalidade = await prisma.localizacao.create({
-        data: { nome, tipo: 'REGIAO' }
+        data: { nome, tipo: 'REGIAO', empresaId: session.user.empresaId }
       });
       return NextResponse.json(novaLocalidade, { status: 201 });
     }
@@ -69,7 +69,8 @@ export async function POST(req: Request) {
         data: {
           nome,
           tipo: 'TECNICO',
-          parentId: userLocalizacao.id // O vínculo é forçado pelo backend
+          parentId: userLocalizacao.id, // O vínculo é forçado pelo backend
+          empresaId: session.user.empresaId // Vincula à empresa do usuário
         }
       });
       return NextResponse.json(novaLocalidade, { status: 201 });
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Acesso negado.' }, { status: 403 });
 
   } catch (error) {
+    //console.log(error);
     return NextResponse.json({ message: "Erro ao criar localidade" }, { status: 500 });
   }
 }
