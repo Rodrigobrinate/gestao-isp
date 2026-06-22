@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient, TipoLocalizacao } from '@prisma/client';
+import { Rethink_Sans } from 'next/font/google';
 
 const prisma = new PrismaClient();
 
@@ -13,10 +14,22 @@ const prisma = new PrismaClient();
 export async function PUT(req: Request, { params }: { params: any }) {
   const { id } = await params;
   const body = await req.json();
-  const { status, responsavelId } = body;
+  const { status, responsavelId, quantidade } = body;
   console.log("Corpo da requisição:", body);
   console.log("ID da solicitação:", id);
 
+  if (status == 'QUANTIDADE'){
+    
+    return await prisma.solicitacao.update({
+      where: { id },
+      data: { quantidade: quantidade*1 },
+    }).then((solicitacao) => {
+      return NextResponse.json(solicitacao, { status: 200 });
+    }).catch((error) => {
+      console.error("Erro ao atualizar solicitação:", error);
+      return NextResponse.json({ message: 'Erro ao atualizar solicitação' }, { status: 500 });
+    });
+  }
 
   // Validação dos dados de entrada
   if (!status || (status === 'APROVADO' && !responsavelId)) {
@@ -59,6 +72,7 @@ export async function PUT(req: Request, { params }: { params: any }) {
         });
 
         if (!almoxarifado) {
+
           throw new Error('Nenhum almoxarifado de origem foi encontrado no sistema.');
         }
 
@@ -85,6 +99,8 @@ export async function PUT(req: Request, { params }: { params: any }) {
 
         // Verifica se há estoque suficiente
         if (itensDisponiveis.length < solicitacao.quantidade) {
+          
+
           throw new Error(
             `Estoque insuficiente. Disponível: ${itensDisponiveis.length}, Solicitado: ${solicitacao.quantidade}`
           );
@@ -118,7 +134,8 @@ export async function PUT(req: Request, { params }: { params: any }) {
     console.error("Erro ao processar solicitação:", error);
     return NextResponse.json(
       { message: error.message || 'Ocorreu um erro interno.' },
-      { status: 500 }
+      
+      { status: 400 }
     );
   }
 }

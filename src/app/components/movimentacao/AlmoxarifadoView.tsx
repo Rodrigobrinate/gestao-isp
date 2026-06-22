@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo, FormEvent } from 'react';
 import { useSession } from 'next-auth/react';
 import { Check, X, Send, ArrowLeftRight, AlertCircle, CheckCircle } from 'lucide-react';
 import { Prisma, Produto, Localizacao, User } from '@prisma/client';
+import { Elsie } from 'next/font/google';
 
 // --- Interfaces para Tipagem dos Dados com Relações ---
 type ItemEstoqueCompleto = Prisma.ItemEstoqueGetPayload<{ include: { produto: true; localizacao: true; } }>;
@@ -113,8 +114,8 @@ function TransferenciaForm({ produtosDisponiveis, localidades, currentUser, loca
   );
 }
 
-function SolicitacoesTable({ solicitacoes, onUpdate }: { solicitacoes: SolicitacaoCompleta[], onUpdate: (id: string, status: 'APROVADO' | 'REJEITADO', solicitanteId: string) => void }) {
-  const solicitacoesPendentes = solicitacoes.filter(s => s.status === 'PENDENTE');
+function SolicitacoesTable({ solicitacoes, onUpdate }: { solicitacoes: SolicitacaoCompleta[], onUpdate: (id: string, status: 'APROVADO' | 'REJEITADO' | 'QUANTIDADE', solicitanteId: string) => void }) {
+  let solicitacoesPendentes = solicitacoes.filter(s => s.status === 'PENDENTE');
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-xl font-semibold mb-4">Solicitações Pendentes</h2>
@@ -123,12 +124,21 @@ function SolicitacoesTable({ solicitacoes, onUpdate }: { solicitacoes: Solicitac
           <table className="w-full text-left">
             <thead><tr className="border-b text-sm"><th className="p-2">Data</th><th className="p-2">Solicitante</th><th className="p-2">Produto</th><th className="p-2">Qtd.</th><th className="p-2">Ações</th></tr></thead>
             <tbody>
-              {solicitacoesPendentes.map(sol => (
+              {solicitacoesPendentes.map((sol, i) => (
                 <tr key={sol.id} className="border-b hover:bg-gray-50 text-sm">
                   <td className="p-2">{new Date(sol.createdAt).toLocaleDateString('pt-BR')}</td>
                   <td className="p-2">{sol.solicitante.name}</td>
                   <td className="p-2">{sol.produto.nome}</td>
-                  <td className="p-2 font-bold">{sol.quantidade}</td>
+                  <td className="p-2 font-bold"><input type="text" placeholder={""+sol.quantidade} //value={sol.quantidade}
+                  onChange={e => {
+                    solicitacoesPendentes[i].quantidade = Number(e.target.value)
+                    //onUpdate(sol.id, 'QUANTIDADE', e.target.value)
+                  }}
+                  onBlur={e => {
+                    sol.quantidade = Number(e.target.value);
+
+                    onUpdate(sol.id, 'QUANTIDADE', e.target.value)}}
+                  /></td>
                   <td className="p-2 flex gap-2">
                     <button onClick={() => onUpdate(sol.id, 'APROVADO', sol.solicitante.id)} title="Aprovar" className="p-2 bg-green-100 text-green-700 rounded-full hover:bg-green-200"><Check size={16} /></button>
                     <button onClick={() => onUpdate(sol.id, 'REJEITADO', sol.solicitante.id)} title="Rejeitar" className="p-2 bg-red-100 text-red-700 rounded-full hover:bg-red-200"><X size={16} /></button>
@@ -187,7 +197,7 @@ export function AlmoxarifadoView() {
       setLoading(true);
       setFeedback(null); 
       const [resItens, resSol, resMov, resLoc] = await Promise.all([
-        fetch(`/api/itens-estoque?regiaoId=${regiaoId}?status=EM_ESTOQUE`),
+        fetch(`/api/itens-estoque?regiaoId=${"almoxarifado"}`),
         fetch('/api/solicitacoes'),
         fetch('/api/movimentacoes'),
         fetch('/api/localidades'),
@@ -246,15 +256,36 @@ export function AlmoxarifadoView() {
     }
   };
 
-  const handleUpdateSolicitacao = async (id: string, status: 'APROVADO' | 'REJEITADO', solicitanteId: string) => {
+  const handleUpdateSolicitacao = async (id: string, status: 'APROVADO' | 'REJEITADO' | 'QUANTIDADE', solicitanteId: string) => {
+    if (status === 'QUANTIDADE'){
+setLoading(true);
+    await fetch(`/api/solicitacoes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, quantidade: solicitanteId }),
+    });
+    setFeedback({ type: 'success', message: `Solicitação atualizada com sucesso.` });
+    await fetchData();
+    }else {
     setLoading(true);
     await fetch(`/api/solicitacoes/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, responsavelId: solicitanteId }),
-    });
+      body: JSON.stringify({status, responsavelId: solicitanteId }),
+    }).then(async res => {
+     
+      console.log("Resposta da atualização da solicitação:", res);
     setFeedback({ type: 'success', message: `Solicitação atualizada com sucesso.` });
+     
     await fetchData();
+    }).catch(async err => {
+      console.error("Erro ao atualizar solicitação:", err);
+      setFeedback({ type: 'error', message: `Erro ao atualizar solicitação: ${err.message}` });
+    });
+    
+    }
+
+    
   };
 
   if (loading && !itensEstoque.length) return <p className="text-center mt-8">Carregando dados do almoxarifado...</p>;

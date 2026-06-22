@@ -2,6 +2,8 @@
 
 import { NextResponse } from 'next/server';
 import { PrismaClient, TipoProduto, CondicaoItem } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 const prisma = new PrismaClient();
 
@@ -28,6 +30,7 @@ export async function POST(req: Request) {
       seriais 
     } = body;
 
+    const session = await getServerSession(authOptions);
     // 1. Validação de dados de entrada
     if (!produtoId || !localizacaoId || !quantidade || !condicao || !numeroNotaFiscal) {
       return NextResponse.json({ message: 'Dados insuficientes para a entrada.' }, { status: 400 });
@@ -59,6 +62,7 @@ export async function POST(req: Request) {
           numeroNotaFiscal,
           fornecedor,
           dataChegada: new Date(),
+          empresaId: session.user.empresaId,
         },
       });
 
@@ -71,13 +75,23 @@ export async function POST(req: Request) {
           condicao,
           status: 'EM_ESTOQUE', // Itens novos sempre entram EM_ESTOQUE
           serialNumber: produto.tipo === TipoProduto.SERIALIZADO ? seriais![i] : null,
+          empresaId: session.user.empresaId,
         });
       }
       
+      //console.log('Itens para criar:', itensParaCriar);
       // c. Cria todos os itens de uma vez (mais eficiente)
       await tx.itemEstoque.createMany({
         data: itensParaCriar,
+      })
+      .then((res) => {
+        console.log('Itens de estoque criados com sucesso!');
+      })
+      .catch((error) => { 
+        console.error('Erro ao criar itens de estoque:', error);
+        //throw error;
       });
+
 
       return entrada;
     });

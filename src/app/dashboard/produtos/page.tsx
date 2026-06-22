@@ -237,7 +237,7 @@ export default function ProdutosPage() {
                   <td className="p-2">{prod.pontoPedido1Mes ?? 'N/A'}</td>
                   <td className="p-2">{prod.estoqueSeguranca1Mes ?? 'N/A'}</td>
                    <td className="p-2">{prod.pontoPedido12Meses ?? 'N/A'}</td>
-                  <td className="p-2">{prod.estoqueSeguranca1Mes ?? 'N/A'}</td>
+                  <td className="p-2">{prod.estoqueSeguranca12Meses ?? 'N/A'}</td>
                   <td className="p-2 flex gap-2">
                     <button onClick={() => abrirModalParaEditarProduto(prod)} className="text-blue-500 hover:text-blue-700"><Edit size={18} /></button>
                     <button onClick={() => handleDeleteProduto(prod.id)} className="text-red-500 hover:text-red-700"><Trash2 size={18} /></button>

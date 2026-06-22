@@ -14,7 +14,7 @@ export default function AlmoxarifadoDashboard() {
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-        const regiaoId = session?.user?.localizacao?.id;
+        const regiaoId = session?.user?.localizacaoId;
 
     setLoading(true);
     try {

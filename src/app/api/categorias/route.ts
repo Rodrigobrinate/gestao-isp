@@ -13,10 +13,12 @@ const session = await getServerSession(authOptions);
   try {
     const categorias = await prisma.categoria.findMany({
       orderBy: { nome: 'asc' },
-      where: { holdingId: session.user.empresa.holdingId }
+      where: {holdingId : session.user.empresa.holdingId
+       }
     })
     return NextResponse.json(categorias);
   } catch (error) {
+    console.log(error);
     return NextResponse.json({ message: 'Erro ao buscar categorias' }, { status: 500 });
   }
 }

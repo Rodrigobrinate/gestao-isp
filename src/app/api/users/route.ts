@@ -102,6 +102,7 @@ export async function POST(req: Request) {
                 username,
                 role, // Prisma vai entender a string se ela for um valor válido do Enum
                 localizacaoId,
+                empresaId: session.user?.empresaId || null,
             },
         });
 
